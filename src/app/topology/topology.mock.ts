@@ -134,6 +134,12 @@ const TOPO_MOCK_NODE: TopoNode[] = [
     x: 1200,
     y: 600
   },
+  //22
+  {
+    label: "Node 23",
+    x: 1350,
+    y: 700
+  },
 ]
 
 export const TOPO_MOCK_EDGE: TopoEdge[] = [
@@ -229,5 +235,9 @@ export const TOPO_MOCK_EDGE: TopoEdge[] = [
   {
     source: TOPO_MOCK_NODE[21],
     target: TOPO_MOCK_NODE[16],
+  },
+  {
+    source: TOPO_MOCK_NODE[21],
+    target: TOPO_MOCK_NODE[22],
   }
 ]
