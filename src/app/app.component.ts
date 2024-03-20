@@ -1,7 +1,8 @@
 import { Component, ElementRef, ViewChild } from '@angular/core';
 import * as d3 from 'd3';
-import { TopologyService } from './topology/topology.service';
-import { TopoEdge, TopoLegend, TopoNode, TopologyGeometryType } from './topology/topology.domain';
+import { TopologyService } from './topology/service/topology.service';
+import { TopoEdge, TopoLegend, TopoNode, TopologyGeometryType, TopologyNodeType } from './topology/service/topology.domain';
+import { BehaviorSubject, filter, switchMap } from 'rxjs';
 
 const D3_ROOT_ELEMENT_ID = "root";
 const PATH_ROOT_MARGIN_TOP = 50;
@@ -64,16 +65,23 @@ export class AppComponent {
   ];
 
   @ViewChild(`${D3_ROOT_ELEMENT_ID}`, {read: ElementRef}) root: ElementRef | undefined; 
+  fetchEventSubject = new BehaviorSubject<TopologyNodeType | null>(null);
+  fetchEvent$ = this.fetchEventSubject.asObservable();
 
   constructor(private topologyService: TopologyService) {
-    this.topologyService.getEdges().subscribe((data: TopoEdge[]) => {
+    this.fetchEvent$.pipe(
+      filter(type => !!type),
+      switchMap(type => this.topologyService.list(type!))
+    ).subscribe(data =>{
       this.edges = data;
-    });
+    })
   }
 
   ngAfterViewInit(): void {
     this.width = this.root?.nativeElement.offsetWidth;
     this.height = this.root?.nativeElement.offsetHeight;
+
+    this.fetchEventSubject.next(TopologyNodeType.Agggregated);
 
     // Initialize the SVG
     let svg = this.initSvg();
@@ -159,7 +167,12 @@ export class AppComponent {
       .attr("cx", (node: TopoNode) => node.x ?? 0)
       .attr("cy", (node: TopoNode) => node.y ?? 0)
       .attr("r", NODE_RADIUS)
-      .attr("stroke", NODE_BORDER_COLOR_DEFAULT)
+      .attr("fill",  (node: TopoNode) => {
+        return node.type === TopologyNodeType.Individual ? NODE_BORDER_COLOR_DEFAULT : "blue";
+      })
+      .attr("stroke", (node: TopoNode) => {
+        return node.type === TopologyNodeType.Individual ? NODE_BORDER_COLOR_DEFAULT : "blue";
+      })
       .attr("stroke-width", NODE_BORDER_WIDTH_DEFAULT)
 
     //label

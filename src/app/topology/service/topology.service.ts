@@ -1,18 +1,35 @@
 import { Injectable } from '@angular/core';
 import { Observable, map, of } from 'rxjs';
 import * as _ from 'lodash';
-import { TopoEdge } from './topology.domain';
-import { TOPO_MOCK_EDGE } from './topology.mock';
+import { TopoEdge, TopologyNodeType } from './topology.domain';
+import { TOPO_MOCK_EDGE } from '../mock/topology.mock';
+import { TOPO_AGGREGATED_MOCK_EDGE } from '../mock/topology-aggregation.mock';
 
 @Injectable({
   providedIn: 'root'
 })
 export class TopologyService {
+  apiMap = new Map<TopologyNodeType, () => Observable<TopoEdge[]>>([
+    [TopologyNodeType.Individual, this.getEdges.bind(this)],
+    [TopologyNodeType.Agggregated, this.getAggregatedEdges.bind(this)],
+  ]);
 
   constructor() { }
 
+  list(type: TopologyNodeType): Observable<TopoEdge[]> {
+    let api = this.apiMap.get(type);
+    return !_.isNil(api) ? api() : this.getEdges();
+  }
+
   getEdges(): Observable<TopoEdge[]> {
     return of(TOPO_MOCK_EDGE)
+    .pipe(
+      map(data => this.convertData(data))
+    );
+  }
+
+  getAggregatedEdges(): Observable<TopoEdge[]> {
+    return of(TOPO_AGGREGATED_MOCK_EDGE)
     .pipe(
       map(data => this.convertData(data))
     );

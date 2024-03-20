@@ -5,6 +5,8 @@ export type TopoIndividualNode = {
   x?: number;
   y?: number;
   id?: string;
+
+  type: TopologyNodeType.Individual;
   rowIndex?: number;
 }
 
@@ -13,9 +15,9 @@ export type TopoAddregatedNode = {
   x?: number;
   y?: number;
   id?: string;
-  rowIndex?: number;
+  type: TopologyNodeType.Agggregated;
 
-  aggregatedNodesCount?: number;
+  aggregatedNodesCount: number;
 }
 
 export class TopoEdge {
@@ -33,4 +35,9 @@ export class TopoLegend {
   geometryType: TopologyGeometryType;
   legendTitle: string;
   legendIconBorderColor: string;
+}
+
+export enum TopologyNodeType {
+  Individual = 'Individual',
+  Agggregated = 'Agggregated'
 }
