@@ -6,6 +6,7 @@ const TOPO_MOCK_NODE: TopoNode[] = [
     label: "Node 1",
     x: 50,
     y: 100,
+    group: 1,
     type: TopologyNodeType.Individual
   },
   //1
@@ -13,6 +14,7 @@ const TOPO_MOCK_NODE: TopoNode[] = [
     label: "Node 2",
     x: 250,
     y: 100,
+    group: 1,
     type: TopologyNodeType.Individual
   },
   //2
@@ -20,6 +22,7 @@ const TOPO_MOCK_NODE: TopoNode[] = [
     label: "Node 3",
     x: 400,
     y: 100,
+    group: 1,
     type: TopologyNodeType.Individual
   },
   //3
@@ -34,6 +37,7 @@ const TOPO_MOCK_NODE: TopoNode[] = [
     label: "Node 5",
     x: 850,
     y: 100,
+    group: 2,
     type: TopologyNodeType.Individual
   },
   //5
@@ -41,6 +45,7 @@ const TOPO_MOCK_NODE: TopoNode[] = [
     label: "Node 6",
     x: 700,
     y: 300,
+    group: 3,
     type: TopologyNodeType.Individual
   },
   //6
@@ -48,6 +53,7 @@ const TOPO_MOCK_NODE: TopoNode[] = [
     label: "Node 7",
     x: 850,
     y: 300,
+    group: 3,
     type: TopologyNodeType.Individual
   },
   //7
@@ -55,6 +61,7 @@ const TOPO_MOCK_NODE: TopoNode[] = [
     label: "Node 8",
     x: 1050,
     y: 100,
+    group: 2,
     type: TopologyNodeType.Individual
   },
   //8
@@ -70,6 +77,7 @@ const TOPO_MOCK_NODE: TopoNode[] = [
     label: "Node 10",
     x: 50,
     y: 400,
+    group: 4,
     type: TopologyNodeType.Individual
   },
   //10
@@ -77,6 +85,7 @@ const TOPO_MOCK_NODE: TopoNode[] = [
     label: "Node 11",
     x: 250,
     y: 400,
+    group: 4,
     type: TopologyNodeType.Individual
   },
   //11
@@ -91,6 +100,7 @@ const TOPO_MOCK_NODE: TopoNode[] = [
     label: "Node 13",
     x: 600,
     y: 400,
+    group: 5,
     type: TopologyNodeType.Individual
   },
   //13
@@ -98,6 +108,7 @@ const TOPO_MOCK_NODE: TopoNode[] = [
     label: "Node 14",
     x: 850,
     y: 400,
+    group: 5,
     type: TopologyNodeType.Individual
   },
   //14
@@ -105,6 +116,7 @@ const TOPO_MOCK_NODE: TopoNode[] = [
     label: "Node 15",
     x: 1050,
     y: 400,
+    group: 6,
     type: TopologyNodeType.Individual
   },
   //15
@@ -112,6 +124,7 @@ const TOPO_MOCK_NODE: TopoNode[] = [
     label: "Node 16",
     x: 1200,
     y: 400,
+    group:6,
     type: TopologyNodeType.Individual
   },
   //16
@@ -126,6 +139,7 @@ const TOPO_MOCK_NODE: TopoNode[] = [
     label: "Node 18",
     x: 500,
     y: 600,
+    group: 7,
     type: TopologyNodeType.Individual
   },
   //18
@@ -133,6 +147,7 @@ const TOPO_MOCK_NODE: TopoNode[] = [
     label: "Node 19",
     x: 600,
     y: 600,
+    group: 7,
     type: TopologyNodeType.Individual
   },
   //19
@@ -140,6 +155,7 @@ const TOPO_MOCK_NODE: TopoNode[] = [
     label: "Node 20",
     x: 850,
     y: 600,
+    group: 8,
     type: TopologyNodeType.Individual
   },
   //20
@@ -147,6 +163,7 @@ const TOPO_MOCK_NODE: TopoNode[] = [
     label: "Node 21",
     x: 1050,
     y: 600,
+    group: 8,
     type: TopologyNodeType.Individual
   },
   //21
@@ -154,6 +171,7 @@ const TOPO_MOCK_NODE: TopoNode[] = [
     label: "Node 22",
     x: 1200,
     y: 600,
+    group: 8,
     type: TopologyNodeType.Individual
   },
   //22

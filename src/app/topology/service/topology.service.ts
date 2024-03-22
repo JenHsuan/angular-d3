@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Observable, map, of } from 'rxjs';
 import * as _ from 'lodash';
-import { TopoEdge, TopologyNodeType } from './topology.domain';
+import { TopoAddregatedNode, TopoEdge, TopoIndividualNode, TopoNode, TopologyNodeType } from './topology.domain';
 import { TOPO_MOCK_EDGE } from '../mock/topology.mock';
 import { TOPO_AGGREGATED_MOCK_EDGE } from '../mock/topology-aggregation.mock';
 
@@ -17,6 +17,7 @@ export class TopologyService {
   constructor() { }
 
   list(type: TopologyNodeType): Observable<TopoEdge[]> {
+    console.log(type)
     let api = this.apiMap.get(type);
     return !_.isNil(api) ? api() : this.getEdges();
   }

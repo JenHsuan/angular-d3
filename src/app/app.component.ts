@@ -1,39 +1,12 @@
-import { Component, ElementRef, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, ViewChild } from '@angular/core';
 import * as d3 from 'd3';
 import { TopologyService } from './topology/service/topology.service';
-import { TopoEdge, TopoLegend, TopoNode, TopologyGeometryType, TopologyNodeType } from './topology/service/topology.domain';
-import { BehaviorSubject, filter, switchMap } from 'rxjs';
+import { EDGE_BORDER_COLOR_DEFAULT, EDGE_BORDER_WIDTH_DEFAULT, LABEL_FONT_FAMILY_DEFAULT, LABEL_FONT_SIZE_DEFAULT, LABEL_FONT_SIZE_GROUP, LOADING_DELAY, NODE_BORDER_WIDTH_DEFAULT, NODE_RADIUS, PATH_ROOT_MARGIN_BOTTOM, PATH_ROOT_MARGIN_LEFT, PATH_ROOT_MARGIN_RIGHT, PATH_ROOT_MARGIN_TOP, TopoAddregatedNode, TopoEdge, TopoLegend, TopoNode, TopologyControlType, TopologyGeometryType, TopologyNodeType, groupColorMap } from './topology/service/topology.domain';
+import { BehaviorSubject, Subject, delay, filter, switchMap, takeUntil, tap } from 'rxjs';
+import { LoadingService } from './topology/topology-path-loading/loading.service';
 
 const D3_ROOT_ELEMENT_ID = "root";
-const PATH_ROOT_MARGIN_TOP = 50;
-const PATH_ROOT_MARGIN_LEFT = 150;
-const PATH_ROOT_MARGIN_RIGHT = 10;
-const PATH_ROOT_MARGIN_BOTTOM = 10;
 
-//legend
-export const LEGEND_LEFT = -50;
-export const LEGEND_TOP = -30;
-export const LEGEND_TITLE_LENGTH = 130;
-export const LEGEND_TITLE_FONT_WEIGHT_DEFAULT = 300;
-export const LEGEND_TITLE_FONT_WEIGHT_HIGHLIGHTED = 800;
-export const LEGEND_ICON_RADIUS = 7;
-export const LEGEND_LINE_LENGTH = 15;
-export const LEGEND_FONT_SIZE = "20px";
-
-//node
-export const NODE_RADIUS = 12;
-export const NODE_ICON_LENGTH = 20;
-export const NODE_BACKGROUND_DEFAULT = "#fff";
-export const NODE_BORDER_COLOR_DEFAULT = "#000";
-export const NODE_BORDER_WIDTH_DEFAULT = 1;
-
-//edge
-export const EDGE_BORDER_WIDTH_DEFAULT = 3;
-export const EDGE_BORDER_COLOR_DEFAULT = "#999";
-export const LABEL_FONT_SIZE_DEFAULT = "18px";
-
-//label
-export const LABEL_FONT_FAMILY_DEFAULT = "Arial ";
 
 @Component({
   selector: 'app-root',
@@ -47,60 +20,87 @@ export class AppComponent {
   edges: TopoEdge[];
   nodes: TopoNode[];
 
-  legendItems: TopoLegend[] = [
-    {
-      geometryType: TopologyGeometryType.EDGE,
-      legendTitle: "Edge",
-      legendIconBorderColor: "#000",
-    }, {
-      geometryType: TopologyGeometryType.NODE,
-      legendTitle: "Node",
-      legendIconBorderColor: "#000",
-    },
-    {
-      geometryType: TopologyGeometryType.NODE,
-      legendTitle: "Control Points",
-      legendIconBorderColor: "red",
-    },
-  ];
-
   @ViewChild(`${D3_ROOT_ELEMENT_ID}`, {read: ElementRef}) root: ElementRef | undefined; 
   fetchEventSubject = new BehaviorSubject<TopologyNodeType | null>(null);
   fetchEvent$ = this.fetchEventSubject.asObservable();
+  
+  private renderGraphEventSubject = new BehaviorSubject<boolean>(false);
+  private destroyedSubject = new Subject<void>();
 
-  constructor(private topologyService: TopologyService) {
+  private currentFetchType = TopologyNodeType.Individual;
+  private shouldDisplayControlPoints = false;
+  displayControlPointsSubject = new BehaviorSubject<boolean>(this.shouldDisplayControlPoints);
+  displayControlPoints$ = this.displayControlPointsSubject.asObservable();
+
+  typeCastMap = new Map<TopologyNodeType, (node: TopoNode) => string>([
+    [TopologyNodeType.Individual, (node) => {
+      return ""
+    }],
+    [TopologyNodeType.Agggregated, (node) => {
+      return node.type === TopologyNodeType.Agggregated ? node.aggregatedNodesCount!.toString() : "";
+    }]
+  ])
+
+  controlMap = new Map<TopologyControlType, () => void>([
+    [
+      TopologyControlType.agregration,
+      () => {
+        this.currentFetchType = this.currentFetchType === TopologyNodeType.Individual ? TopologyNodeType.Agggregated : TopologyNodeType.Individual;
+        this.fetchEventSubject.next(this.currentFetchType);
+      }
+    ],
+    [
+      TopologyControlType.contolPoint,
+      () => {
+        this.displayControlPointsSubject.next(true);
+      }
+    ]
+  ]);
+
+  constructor(
+    private topologyService: TopologyService,
+    private loadingService: LoadingService,
+    private cd: ChangeDetectorRef
+  ) {
     this.fetchEvent$.pipe(
       filter(type => !!type),
-      switchMap(type => this.topologyService.list(type!))
+      takeUntil(this.destroyedSubject),
+      tap(() => this.loadingService.loadingOn()),
+      switchMap(type => this.topologyService.list(type!)),
+      delay(LOADING_DELAY),
+      tap(() => this.loadingService.loadingOff()),
     ).subscribe(data =>{
+      // Clean items on svg
+      this.cleanItemsOnSvg();
       this.edges = data;
+      this.renderGraphEventSubject.next(this.shouldDisplayControlPoints);
     })
+
+    this.displayControlPoints$.subscribe((val) => {
+      if (val) {
+        this.shouldDisplayControlPoints = !this.shouldDisplayControlPoints;
+        this.fetchEventSubject.next(this.currentFetchType);
+      }
+    });
   }
 
   ngAfterViewInit(): void {
     this.width = this.root?.nativeElement.offsetWidth;
     this.height = this.root?.nativeElement.offsetHeight;
 
-    this.fetchEventSubject.next(TopologyNodeType.Agggregated);
+    this.fetchEventSubject.next(this.currentFetchType);
 
     // Initialize the SVG
     let svg = this.initSvg();
 
-    //legends
-    this.renderLegends(
-      svg,
-      this.legendItems,
-    );
+    // Subscribe events for graph
+    this.handleGraphEvents(svg);
 
-    //nodes
-    this.nodes = this.getNodes(this.edges);
-    this.renderNodes(svg, this.nodes, this.edges);
+    this.cd.detectChanges();
+  }
 
-    //edges
-    this.renderEdges(svg, this.nodes, this.edges);
-
-
-    this.initZoom(); 
+  ngOnDestroy() {
+    this.destroyedSubject.next();
   }
 
   private initSvg() {
@@ -110,45 +110,6 @@ export class AppComponent {
       .attr("height", this.height + PATH_ROOT_MARGIN_TOP + PATH_ROOT_MARGIN_BOTTOM)
       .append("g")
       .attr("transform", `translate(${PATH_ROOT_MARGIN_LEFT}, ${PATH_ROOT_MARGIN_TOP})`);
-  }
-
-  private renderLegends(
-    svg: d3.Selection<SVGGElement, unknown, HTMLElement, any>,
-    legendItems: TopoLegend[]
-  ) {
-    legendItems.forEach((item: TopoLegend, index) => {
-      if (item.geometryType === TopologyGeometryType.NODE) {
-        svg.append("circle")
-          .attr("cx", LEGEND_LEFT + index * LEGEND_TITLE_LENGTH)
-          .attr("cy", LEGEND_TOP)
-          .attr("r", LEGEND_ICON_RADIUS)
-          .attr("fill", NODE_BACKGROUND_DEFAULT)
-          .attr("stroke", item.legendIconBorderColor)
-          .attr("stroke-width", NODE_BORDER_WIDTH_DEFAULT)
-          .attr("cursor", "pointer")
-      } else if (item.geometryType === TopologyGeometryType.EDGE) {
-        svg.append("line")
-          .attr("x1", LEGEND_LEFT + index * LEGEND_TITLE_LENGTH)
-          .attr("y1", LEGEND_TOP)
-          .attr("x2", LEGEND_LEFT + index * LEGEND_TITLE_LENGTH + LEGEND_LINE_LENGTH)
-          .attr("y2", LEGEND_TOP)
-          .attr("stroke", item.legendIconBorderColor)
-          .attr("stroke-width", NODE_BORDER_WIDTH_DEFAULT)
-          .attr("cursor", "pointer")
-      }
-
-      //label
-      svg.append("text")
-        .attr("dx", LEGEND_LEFT + index * LEGEND_TITLE_LENGTH + LEGEND_ICON_RADIUS * 3)
-        .attr("dy", LEGEND_TOP + 5)
-        .text(item.legendTitle)
-        .attr("font-size", LEGEND_FONT_SIZE)
-        .attr("font-weight", LEGEND_TITLE_FONT_WEIGHT_DEFAULT)
-        .attr("font-family", LABEL_FONT_FAMILY_DEFAULT)
-        .attr("cursor", "pointer")
-        .on("click", (e) => console.log(e))
-        .on("mouseover", (e) => console.log(e))
-    }); 
   }
 
   private renderNodes(
@@ -166,12 +127,23 @@ export class AppComponent {
       .append("circle")
       .attr("cx", (node: TopoNode) => node.x ?? 0)
       .attr("cy", (node: TopoNode) => node.y ?? 0)
-      .attr("r", NODE_RADIUS)
+      .attr("r", (node: TopoNode) =>  {
+        if (node.type === TopologyNodeType.Individual) {
+          return NODE_RADIUS;
+        }
+        return NODE_RADIUS * 1.8;
+      })
       .attr("fill",  (node: TopoNode) => {
-        return node.type === TopologyNodeType.Individual ? NODE_BORDER_COLOR_DEFAULT : "blue";
+        if (node.type === TopologyNodeType.Agggregated) {
+          return "#deebf3";
+        }
+        return groupColorMap.get(node.group!) ?? "#000";
       })
       .attr("stroke", (node: TopoNode) => {
-        return node.type === TopologyNodeType.Individual ? NODE_BORDER_COLOR_DEFAULT : "blue";
+        if (node.type === TopologyNodeType.Agggregated) {
+          return "#deebf3";
+        }
+        return groupColorMap.get(node.group!) ?? "#000";
       })
       .attr("stroke-width", NODE_BORDER_WIDTH_DEFAULT)
 
@@ -179,32 +151,50 @@ export class AppComponent {
     eleEnter
       .append("text")
       .attr("dx", (node: TopoNode) => node.x ?? 0)
-      .attr("dy", (node: TopoNode) => node.y ? node.y + NODE_RADIUS * 2 : NODE_RADIUS * 2)
+      .attr("dy", (node: TopoNode) => node.y ? node.y + NODE_RADIUS * 2.7 : NODE_RADIUS * 2)
       .attr("font-family", LABEL_FONT_FAMILY_DEFAULT)
       .attr("font-size", LABEL_FONT_SIZE_DEFAULT)
       .attr("text-anchor", "middle")
       .text((node: TopoNode) => {
-        return node.label;
+        if (node.type === TopologyNodeType.Individual) {
+          return node.label;  
+        }
+        return node.group ? `Group ${node.group}` : "";
       })
+
+     //label
+     eleEnter
+     .append("text")
+     .attr("dx", (node: TopoNode) => node.x ?? 0)
+     .attr("dy", (node: TopoNode) => node.y ? node.y + 8 : 0)
+     .attr("font-family", LABEL_FONT_FAMILY_DEFAULT)
+     .attr("font-size", LABEL_FONT_SIZE_GROUP)
+     .attr("text-anchor", "middle")
+     .text((node) => {
+      return this.typeCastMap.get(node.type!)!(node);
+     })
   }
 
   private getNodes(edges: TopoEdge[]): TopoNode[] {
     let nodes: TopoNode[] = [];
-    edges.forEach((edge: TopoEdge) => {
-      if (!nodes.find(node => node.id === edge.source.id)) {
-        nodes.push(edge.source);
-      } 
-      if (!nodes.find(node => node.id === edge.target.id)) {
-        nodes.push(edge.target);
-      }
-    })
+    if (edges) {
+      edges.forEach((edge: TopoEdge) => {
+        if (!nodes.find(node => node.id === edge.source.id)) {
+          nodes.push(edge.source);
+        } 
+        if (!nodes.find(node => node.id === edge.target.id)) {
+          nodes.push(edge.target);
+        }
+      })
+    }
     return nodes;
   }
 
   private renderEdges(
     svg: d3.Selection<SVGGElement, unknown, HTMLElement, any>,
     arrangedNodes: TopoNode[],
-    edges: TopoEdge[]
+    edges: TopoEdge[],
+    shouldDisplayControlPoints: boolean
   ) {
     svg.selectAll("g")
       .data(edges)
@@ -226,7 +216,10 @@ export class AppComponent {
         let controlPointX = isHorizontal ? x1 : x1 + CONSTANT_CONTROL_POINT * ((x1 - x0) / (y1 - y0));
         let controlPointY = isHorizontal ? y1 : y1 - CONSTANT_CONTROL_POINT * ((y1 - y0) / (x1 - x0));
     
-        this.renderControlpoints(svg, x0, y0, x1, y1, controlPointX, controlPointY, isHorizontal);
+        if (shouldDisplayControlPoints) {
+          this.renderControlpoints(svg, x0, y0, x1, y1, controlPointX, controlPointY, isHorizontal);
+        }
+        
         return this.createEdge(x0, y0, x1, y1, controlPointX, controlPointY, isHorizontal);
       })
       .attr("fill", "none")
@@ -331,5 +324,36 @@ export class AppComponent {
     d3.select(`#${D3_ROOT_ELEMENT_ID}`)
       .select('svg g')
 		  .attr('transform', e.transform);
+  }
+
+  private cleanItemsOnSvg() {
+    d3.select(`#${D3_ROOT_ELEMENT_ID}`)
+      .selectAll("g > *").remove(); 
+  }
+
+  private handleItemEvents(svg: d3.Selection<SVGGElement, unknown, HTMLElement, any>) {
+  }
+
+  private handleGraphEvents(svg: d3.Selection<SVGGElement, unknown, HTMLElement, any>) {
+    // Render graph events
+    this.renderGraphEventSubject.pipe(
+      takeUntil(this.destroyedSubject)
+    ).subscribe((shouldRender: boolean) => {
+      //nodes
+      this.nodes = this.getNodes(this.edges);
+      if (this.nodes.length !== 0) {
+        this.renderNodes(svg, this.nodes, this.edges);
+    
+        //edges
+        this.renderEdges(svg, this.nodes, this.edges, shouldRender);
+    
+      }
+  
+      this.initZoom(); 
+    });
+  }
+
+  onNodeChanged(value: TopologyControlType) {
+    this.controlMap.get(value)?.call(this);
   }
 }
