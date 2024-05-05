@@ -1,49 +1,55 @@
 import { Injectable } from '@angular/core';
 import { Observable, map, of } from 'rxjs';
 import * as _ from 'lodash';
-import { TopoAddregatedNode, TopoEdge, TopoIndividualNode, TopoNode, TopologyNodeType } from './topology.domain';
-import { TOPO_MOCK_EDGE } from '../mock/topology.mock';
-import { TOPO_AGGREGATED_MOCK_EDGE } from '../mock/topology-aggregation.mock';
+import { Topology } from './topology.domain';
+import { TOPOLOGY_MOCK } from '../mock/topology.mock';
 
 @Injectable({
   providedIn: 'root'
 })
 export class TopologyService {
-  apiMap = new Map<TopologyNodeType, () => Observable<TopoEdge[]>>([
-    [TopologyNodeType.Individual, this.getEdges.bind(this)],
-    [TopologyNodeType.Agggregated, this.getAggregatedEdges.bind(this)],
-  ]);
 
   constructor() { }
 
-  list(type: TopologyNodeType): Observable<TopoEdge[]> {
-    console.log(type)
-    let api = this.apiMap.get(type);
-    return !_.isNil(api) ? api() : this.getEdges();
-  }
-
-  getEdges(): Observable<TopoEdge[]> {
-    return of(TOPO_MOCK_EDGE)
+  getData(): Observable<Topology> {
+    console.log(123)
+    return of(TOPOLOGY_MOCK)
     .pipe(
       map(data => this.convertData(data))
     );
   }
 
-  getAggregatedEdges(): Observable<TopoEdge[]> {
-    return of(TOPO_AGGREGATED_MOCK_EDGE)
-    .pipe(
-      map(data => this.convertData(data))
-    );
-  }
-
-  private convertData(data: TopoEdge[]): TopoEdge[] {
+  private convertData(data: Topology): Topology {
     const newData = _.cloneDeep(data);
+    const newNodes = _.cloneDeep(newData.nodes);
+    const newEdges = _.cloneDeep(newData.edges);
 
-    newData.forEach((edge, index) => {
-      edge.id = _.isNil(edge.id) ? `${index}-edge` : edge.id;
-      edge.source.id = _.isNil(edge.source.id) ? `${index}-source-node` : edge.source.id;
-      edge.target.id = _.isNil(edge.target.id) ? `${index}-target-node` : edge.target.id;
+    newNodes.forEach(node => {
+      node.children = [];
+      node.isVisited = false;
     });
-    return newData;
+
+    const nodeQueue = [ newNodes[0] ];
+
+    while (nodeQueue.length > 0) {
+      const currentNode = nodeQueue.shift();
+      currentNode!.isVisited = true;
+
+      newEdges.forEach(edge => {
+        if (edge.source.id === currentNode?.id) {
+          const childs = newNodes.find(node => node.id === edge.target.id);
+          if (!_.isNil(childs) && !childs.isVisited) {
+            currentNode.children?.push(childs);
+            nodeQueue.push(childs);
+          }
+        }
+      })
+    }
+    
+    console.log(newNodes)
+    return {
+      nodes: newNodes,
+      edges: newEdges
+    };
   }
 }
