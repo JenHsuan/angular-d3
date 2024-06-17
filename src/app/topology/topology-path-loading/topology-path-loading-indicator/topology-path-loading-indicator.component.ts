@@ -1,4 +1,4 @@
-import { Component, ContentChild, Input, OnInit, TemplateRef } from '@angular/core';
+import { ChangeDetectorRef, Component, ContentChild, Input, OnInit, TemplateRef } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 import { LoadingService } from '../loading.service';
 import { NavigationEnd, NavigationError, NavigationStart, RouteConfigLoadEnd, RouteConfigLoadStart, Router } from '@angular/router';
@@ -9,7 +9,7 @@ import { NavigationEnd, NavigationError, NavigationStart, RouteConfigLoadEnd, Ro
   styleUrls: ['./topology-path-loading-indicator.component.scss']
 })
 export class LoadingIndicatorComponent implements OnInit {
-  loading$: Observable<boolean>;
+  loading: boolean = false;
 
   @Input()
   detectNavigation = false;
@@ -18,9 +18,11 @@ export class LoadingIndicatorComponent implements OnInit {
   customLoadingIndicator: TemplateRef<any> | null = null;
 
   constructor(
-  private loadingService: LoadingService, 
-  private router: Router) {
-    this.loading$ = this.loadingService.loading$;
+    private loadingService: LoadingService, 
+    private router: Router,
+    private cd: ChangeDetectorRef
+  ) {
+    //this.loading$ = this.loadingService.loading$;
   }
 
   ngOnInit(): void {
@@ -37,6 +39,15 @@ export class LoadingIndicatorComponent implements OnInit {
         )
         .subscribe();
     }
+
+    this.loadingService.loading$.subscribe(value => {
+      this.loading = value;
+      this.cd.detectChanges();
+    });
   }
 
+  ngAfterViewInit(): void {
+
+    this.cd.detectChanges();
+  }
 }

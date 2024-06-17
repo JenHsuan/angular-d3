@@ -1,7 +1,8 @@
-import { Component, ElementRef, EventEmitter, OnInit, Output, ViewChild } from '@angular/core';
+import { Component, ElementRef, EventEmitter, Input, OnInit, Output, ViewChild } from '@angular/core';
 import * as d3 from 'd3';
 import * as _ from 'lodash';
 import { LABEL_FONT_FAMILY_DEFAULT, LEGEND_FONT_SIZE, LEGEND_ICON_RADIUS, LEGEND_LEFT, LEGEND_LINE_LENGTH, LEGEND_TITLE_FONT_WEIGHT_DEFAULT, LEGEND_TITLE_FONT_WEIGHT_HIGHLIGHTED, LEGEND_TITLE_LENGTH, LEGEND_TOP, NODE_BACKGROUND_DEFAULT, NODE_BORDER_WIDTH_DEFAULT, NODE_BORDER_WIDTH_HIGHLIGHTED, PATH_ROOT_MARGIN_LEFT, PATH_ROOT_MARGIN_TOP, TopoLegend, TopologyControlType, TopologyGeometryType, TopologyNodeType } from '../service/topology.domain';
+import { BehaviorSubject } from 'rxjs';
 
 const D3_ROOT_ELEMENT_ID = "controlbar";
 
@@ -14,7 +15,8 @@ export class TopologyControlbarComponent implements OnInit {
   width: number;
   height: number;
   svg: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
-  @Output() nodeTypeChanged = new EventEmitter<TopologyControlType>();
+ // @Output() nodeTypeChanged = new EventEmitter<TopologyControlType>();
+  @Input() nodeTypeChangedSubject: BehaviorSubject<TopologyControlType | undefined>;
   @ViewChild(`${D3_ROOT_ELEMENT_ID}`, {read: ElementRef}) root: ElementRef | undefined; 
 
   legendItems: TopoLegend[] = [
@@ -42,7 +44,7 @@ export class TopologyControlbarComponent implements OnInit {
       legendIconBorderColor: "#deebf3",
       onClick: () => {
         this.highlightLegend(this.svg, 0, this.legendItems[0]);
-        this.nodeTypeChanged.emit(TopologyControlType.agregration);
+        this.nodeTypeChangedSubject.next(TopologyControlType.agregration);
         //this.fetchEventSubject.next(TopologyNodeType.Individual)
       },
       isHighlighted: false
@@ -53,7 +55,7 @@ export class TopologyControlbarComponent implements OnInit {
       legendIconBorderColor: "red",
       onClick: () => {
         this.highlightLegend(this.svg, 1, this.legendItems[1]);
-        this.nodeTypeChanged.emit(TopologyControlType.contolPoint);
+        this.nodeTypeChangedSubject.next(TopologyControlType.contolPoint);
         //this.fetchEventSubject.next(TopologyNodeType.Individual)
       },
       isHighlighted: false
