@@ -36,7 +36,7 @@ export class TopologyControlbarGroupComponent implements OnInit, OnDestroy, Topo
 
   configurationType = TopologyContollerType.GROUP;
 
-  @Input() undoConfiguration$?: Observable<TopologyController | null>;
+  @Input() undoConfiguration$?: Observable<TopologyCommand | null>;
   @Input() resetConfiguration$?: Observable<boolean | null>;
 
   @Input()
@@ -61,6 +61,8 @@ export class TopologyControlbarGroupComponent implements OnInit, OnDestroy, Topo
     this.initSelectOptions();
 
     this.registerSelectionFinalized();
+    this.registerUndo();
+    this.registerReset();
   }
 
   ngOnDestroy(): void {
@@ -108,6 +110,57 @@ export class TopologyControlbarGroupComponent implements OnInit, OnDestroy, Topo
         }
       }
     );
+  }
+
+  private registerUndo() {
+    this.undoConfiguration$?.pipe(
+      filter(command => !!command),
+      takeUntil(this.destroyed)
+    ).subscribe((command: TopologyCommand | null) => {
+      command = command as TopologyCommand;
+
+      if (_.isNil(this.commandStack) || this.commandStack.length === 0 || _.isNil(this.options)) {
+        return;
+      }
+
+      if (command.type === this.configurationType) {
+        //recover the grouping
+        this.removeLatestCommand();
+        const lastGroupConfig = this.commandStack.find(command => command.type === TopologyContollerType.GROUP);
+        if (!_.isNil(lastGroupConfig)) {
+          this.selection = this.options.find(item => item.statusType === lastGroupConfig.statusType)!;
+        } else {
+          this.selection = this.options.find(item => item.statusType === TopologyNodeType.Individual)!;
+        }
+
+        this.changeDetector.detectChanges();
+
+        if (!_.isNil(this.makeCommand)) {
+          const command = this.makeCommand(this.selection.statusType);
+          command.execute();
+        }
+      }
+    });
+  }
+
+  private registerReset() {
+    this.resetConfiguration$?.pipe(
+      filter(shouldReset => !!shouldReset),
+      takeUntil(this.destroyed)
+    ).subscribe((shouldReset: boolean | null) => {
+      shouldReset = shouldReset as boolean;
+      if (!_.isNil(this.options)) {
+        //recover the grouping
+        this.selection = this.options.find(item => item.statusType === TopologyNodeType.Individual)!;
+          
+        this.changeDetector.detectChanges();
+
+        if (!_.isNil(this.makeCommand)) {
+          const command = this.makeCommand(this.selection.statusType);
+          command.execute();
+        }
+      }
+    });
   }
 
   onOpen() {

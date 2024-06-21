@@ -22,8 +22,6 @@ export class TopologyComponent implements TopologyCommandReceiver {
   edges: TopoEdge[];
   nodes: TopoNode[];
 
-  // @Input() nodeTypeChangedSubject: BehaviorSubject<TopologyControlType | undefined>;
-
   @ViewChild(`${D3_ROOT_ELEMENT_ID}`, {read: ElementRef}) root: ElementRef | undefined; 
   fetchEventSubject = new BehaviorSubject<TopologyNodeType | null>(null);
   fetchEvent$ = this.fetchEventSubject.asObservable();
@@ -44,22 +42,6 @@ export class TopologyComponent implements TopologyCommandReceiver {
       return node.type === TopologyNodeType.Agggregated ? node.aggregatedNodesCount!.toString() : "";
     }]
   ])
-
-  // controlMap = new Map<TopologyControlType, () => void>([
-  //   [
-  //     TopologyControlType.agregration,
-  //     () => {
-  //       this.currentFetchType = this.currentFetchType === TopologyNodeType.Individual ? TopologyNodeType.Agggregated : TopologyNodeType.Individual;
-  //       this.fetchEventSubject.next(this.currentFetchType);
-  //     }
-  //   ],
-  //   [
-  //     TopologyControlType.contolPoint,
-  //     () => {
-  //       this.displayControlPointsSubject.next(true);
-  //     }
-  //   ]
-  // ]);
 
   constructor(
     private topologyService: TopologyService,
@@ -359,18 +341,7 @@ export class TopologyComponent implements TopologyCommandReceiver {
     });
   }
 
-  // registerNodeTypeChanged() {
-  //   this.nodeTypeChangedSubject.pipe(
-  //     filter(value => !!value),
-  //     takeUntil(this.destroyedSubject)
-  //   ).subscribe((value) => {
-  //     this.controlMap.get(value as TopologyControlType)?.call(this);
-  //   });
-  // }
-
   groupNodes(topologyLegendItem: TopologyController) {
-    // Fetch new edges
-    console.log(topologyLegendItem)
     this.fetchEventSubject.next(topologyLegendItem.statusType as unknown as TopologyNodeType);  
   }
 

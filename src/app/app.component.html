@@ -6,13 +6,27 @@
       Grouping
     </div>
     <div class="value">
-      <app-topology-controlbar-group></app-topology-controlbar-group>
+      <app-topology-controlbar-group
+        [undoConfiguration$]="undoConfiguration$"
+        [resetConfiguration$]="resetConfiguration$">
+      </app-topology-controlbar-group>
     </div>
     <div class="name">
       Asstitant Displaying
     </div>
     <div class="value">
-      <app-topology-controlbar-assistant></app-topology-controlbar-assistant>
+      <app-topology-controlbar-assistant
+        [undoConfiguration$]="undoConfiguration$"
+        [resetConfiguration$]="resetConfiguration$">
+      </app-topology-controlbar-assistant>
+    </div>
+  </div>
+  <div class="field-undo-button">
+    <div class="button-container">
+      <button *ngIf="isUndoButtonDisplayed" (click)="onUndoButtonClicked()">
+        <span>{{ undoButtonText }}</span>
+      </button>
+      <button (click)="onResetButtonClicked()">Reset</button>
     </div>
   </div>
 </div>
