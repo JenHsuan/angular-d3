@@ -4,19 +4,18 @@ import { Observable, Subject, debounceTime, distinctUntilChanged, filter, map, s
 import * as _ from 'lodash';
 
 import { TopologyCommand, TopologyCommandInvoker } from '../../service/topology.command';
-import { TopologyContollerType, TopologyController, TopologyStatusType } from '../service/topology-controller.domain';
-import { TOPOLOGY_GROUPING_DELAY } from './service/topology-controlbar-group.domain';
-import { TopologyControlbarGroupService } from './service/topology-controlbar-group.service';
-import { TopologyNodeType } from '../../service/topology.domain';
+import { TopologyAssistantType, TopologyContollerType, TopologyController, TopologyStatusType } from '../service/topology-controller.domain';
+import { TopologyControlbarAssistantService } from './service/topology-controlbar-assistant.service';
+import { TOPOLOGY_ASSISTANT_DELAY } from './service/topology-controlbar-assistant.domain';
 
 type ValueType = TopologyController;
 
 @Component({
-  selector: 'app-topology-controlbar-group',
-  templateUrl: './topology-controlbar-group.component.html',
-  styleUrls: ['./topology-controlbar-group.component.scss']
+  selector: 'app-topology-controlbar-assistant',
+  templateUrl: './topology-controlbar-assistant.component.html',
+  styleUrls: ['./topology-controlbar-assistant.component.scss']
 })
-export class TopologyControlbarGroupComponent implements OnInit, OnDestroy, TopologyCommandInvoker {
+export class TopologyControlbarAssistantComponent implements OnInit, OnDestroy, TopologyCommandInvoker {
   /**
    * Options displayed in ng-select
    */
@@ -34,7 +33,7 @@ export class TopologyControlbarGroupComponent implements OnInit, OnDestroy, Topo
    */
   selectionFinalizedSubject = new Subject<void>();
 
-  configurationType = TopologyContollerType.GROUP;
+  configurationType = TopologyContollerType.ASSISTANT
 
   @Input() undoConfiguration$?: Observable<TopologyController | null>;
   @Input() resetConfiguration$?: Observable<boolean | null>;
@@ -53,7 +52,7 @@ export class TopologyControlbarGroupComponent implements OnInit, OnDestroy, Topo
   protected destroyed = new Subject<void>();
   
   constructor(
-    protected service: TopologyControlbarGroupService,
+    protected service: TopologyControlbarAssistantService,
     private changeDetector: ChangeDetectorRef,
   ) { }
 
@@ -75,7 +74,7 @@ export class TopologyControlbarGroupComponent implements OnInit, OnDestroy, Topo
     this.searchInput.pipe(
         filter(query => !_.isNil(query) || !_.isEmpty(query) || this.emptySearchReturnsData),
         distinctUntilChanged(),
-        debounceTime(TOPOLOGY_GROUPING_DELAY),
+        debounceTime(TOPOLOGY_ASSISTANT_DELAY),
         switchMap(query => this.service.list()
       ),
       tap(() => {
@@ -99,7 +98,7 @@ export class TopologyControlbarGroupComponent implements OnInit, OnDestroy, Topo
     ).subscribe(
       (selection: ValueType) => {
         if (!_.isNil(this.makeCommand)) {
-          let statusType = !_.isNil(selection) ? selection.statusType as TopologyNodeType : TopologyNodeType.Individual;
+          let statusType = !_.isNil(selection) ? selection.statusType as TopologyAssistantType : TopologyAssistantType.NONE;
 
           const command = this.makeCommand(statusType)
           command.execute();
@@ -119,7 +118,7 @@ export class TopologyControlbarGroupComponent implements OnInit, OnDestroy, Topo
   }
 
   selectPlaceholderText(): string {
-    return "No Grouping";
+    return "No Assistant Items Displaying";
   }
 
   setCommandStack(commandStack: TopologyCommand[]) {
@@ -141,4 +140,5 @@ export class TopologyControlbarGroupComponent implements OnInit, OnDestroy, Topo
       this.commandStack.shift();
     }
   }
+
 }

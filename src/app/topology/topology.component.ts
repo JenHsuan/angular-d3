@@ -1,9 +1,13 @@
 import { ChangeDetectorRef, Component, ElementRef, Input, ViewChild } from '@angular/core';
+
 import * as d3 from 'd3';
 import { BehaviorSubject, Subject, delay, filter, switchMap, takeUntil, tap } from 'rxjs';
-import { TopologyService } from '../service/topology.service';
-import { LoadingService } from '../topology-path-loading/loading.service';
-import { EDGE_BORDER_COLOR_DEFAULT, EDGE_BORDER_WIDTH_DEFAULT, LABEL_FONT_FAMILY_DEFAULT, LABEL_FONT_SIZE_DEFAULT, LABEL_FONT_SIZE_GROUP, LOADING_DELAY, NODE_BORDER_WIDTH_DEFAULT, NODE_RADIUS, PATH_ROOT_MARGIN_BOTTOM, PATH_ROOT_MARGIN_LEFT, PATH_ROOT_MARGIN_RIGHT, PATH_ROOT_MARGIN_TOP, TopoEdge, TopoNode, TopologyControlType, TopologyNodeType, groupColorMap } from '../service/topology.domain';
+
+import { TopologyService } from './service/topology.service';
+import { LoadingService } from './topology-path-loading/loading.service';
+import { EDGE_BORDER_COLOR_DEFAULT, EDGE_BORDER_WIDTH_DEFAULT, LABEL_FONT_FAMILY_DEFAULT, LABEL_FONT_SIZE_DEFAULT, LABEL_FONT_SIZE_GROUP, LOADING_DELAY, NODE_BORDER_WIDTH_DEFAULT, NODE_RADIUS, PATH_ROOT_MARGIN_BOTTOM, PATH_ROOT_MARGIN_LEFT, PATH_ROOT_MARGIN_RIGHT, PATH_ROOT_MARGIN_TOP, TopoEdge, TopoNode, TopologyControlType, TopologyNodeType, groupColorMap } from './service/topology.domain';
+import { TopologyController } from './topology-controlbar/service/topology-controller.domain';
+import { TopologyCommandReceiver } from './service/topology.command';
 
 const D3_ROOT_ELEMENT_ID = "root";
 @Component({
@@ -11,14 +15,14 @@ const D3_ROOT_ELEMENT_ID = "root";
   templateUrl: './topology.component.html',
   styleUrls: ['./topology.component.scss']
 })
-export class TopologyComponent {
+export class TopologyComponent implements TopologyCommandReceiver {
   title = 'angular-d3';
   width: number;
   height: number;
   edges: TopoEdge[];
   nodes: TopoNode[];
 
-  @Input() nodeTypeChangedSubject: BehaviorSubject<TopologyControlType | undefined>;
+  // @Input() nodeTypeChangedSubject: BehaviorSubject<TopologyControlType | undefined>;
 
   @ViewChild(`${D3_ROOT_ELEMENT_ID}`, {read: ElementRef}) root: ElementRef | undefined; 
   fetchEventSubject = new BehaviorSubject<TopologyNodeType | null>(null);
@@ -41,21 +45,21 @@ export class TopologyComponent {
     }]
   ])
 
-  controlMap = new Map<TopologyControlType, () => void>([
-    [
-      TopologyControlType.agregration,
-      () => {
-        this.currentFetchType = this.currentFetchType === TopologyNodeType.Individual ? TopologyNodeType.Agggregated : TopologyNodeType.Individual;
-        this.fetchEventSubject.next(this.currentFetchType);
-      }
-    ],
-    [
-      TopologyControlType.contolPoint,
-      () => {
-        this.displayControlPointsSubject.next(true);
-      }
-    ]
-  ]);
+  // controlMap = new Map<TopologyControlType, () => void>([
+  //   [
+  //     TopologyControlType.agregration,
+  //     () => {
+  //       this.currentFetchType = this.currentFetchType === TopologyNodeType.Individual ? TopologyNodeType.Agggregated : TopologyNodeType.Individual;
+  //       this.fetchEventSubject.next(this.currentFetchType);
+  //     }
+  //   ],
+  //   [
+  //     TopologyControlType.contolPoint,
+  //     () => {
+  //       this.displayControlPointsSubject.next(true);
+  //     }
+  //   ]
+  // ]);
 
   constructor(
     private topologyService: TopologyService,
@@ -86,7 +90,7 @@ export class TopologyComponent {
 
   ngOnInit() {
 
-    this.registerNodeTypeChanged();
+    //this.registerNodeTypeChanged();
   }
   
   ngAfterViewInit(): void {
@@ -355,12 +359,23 @@ export class TopologyComponent {
     });
   }
 
-  registerNodeTypeChanged() {
-    this.nodeTypeChangedSubject.pipe(
-      filter(value => !!value),
-      takeUntil(this.destroyedSubject)
-    ).subscribe((value) => {
-      this.controlMap.get(value as TopologyControlType)?.call(this);
-    });
+  // registerNodeTypeChanged() {
+  //   this.nodeTypeChangedSubject.pipe(
+  //     filter(value => !!value),
+  //     takeUntil(this.destroyedSubject)
+  //   ).subscribe((value) => {
+  //     this.controlMap.get(value as TopologyControlType)?.call(this);
+  //   });
+  // }
+
+  groupNodes(topologyLegendItem: TopologyController) {
+    // Fetch new edges
+    console.log(topologyLegendItem)
+    this.fetchEventSubject.next(topologyLegendItem.statusType as unknown as TopologyNodeType);  
+  }
+
+  renderAssistantItems(topologyLegendItem: TopologyController) {
+    // Fetch new edges
+    this.displayControlPointsSubject.next(true);
   }
 }

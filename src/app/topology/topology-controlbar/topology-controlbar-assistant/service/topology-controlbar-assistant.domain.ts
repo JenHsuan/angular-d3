@@ -1,0 +1,1 @@
+export const TOPOLOGY_ASSISTANT_DELAY = 500;

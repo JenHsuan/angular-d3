@@ -1,4 +1,56 @@
-#root {
+.loading-container {
+  display: flex;
   width: 100%;
-  height: 100vh;
+  height: 100%;
+  justify-content: center;
+  align-items: center;
+}
+
+.configuration-container {
+  min-height: 10em;
+  width: calc(100% - 1.2em);
+  border-bottom: 1px solid #cecece;
+  display: grid;
+  margin: 0 .6em;
+  margin-bottom: 1em;
+  padding: 1.2em .1em;
+  grid-template-columns: minmax(10em, 5fr) minmax(20em, 1fr);
+  grid-template-areas:
+    "panel scrollbar"
+    "panel undoButton";
+}
+
+.field-panel {
+  grid-area: panel;
+  display: grid;
+  grid-template-columns: 12em 18em;
+  padding: .5em;
+}
+
+.field-scrollbar {
+  grid-area: scrollbar;
+}
+
+.field-undo-button {
+  grid-area: undoButton;
+  margin-left: auto;
+  margin-right: 2.5em;
+  min-height: 3em;
+  .button-container {
+    display: flex;
+    nu-cion {
+      margin-right: .3em;
+    }
+  }
+}
+
+.name {
+  line-height: 2.3em;
+  height: 2.3em;
+  text-align: center;
+}
+
+.value {
+  line-height: 2em;
+  height: 2em;
 }
