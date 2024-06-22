@@ -69,11 +69,6 @@ export class TopologyComponent implements TopologyCommandReceiver {
       }
     });
   }
-
-  ngOnInit() {
-
-    //this.registerNodeTypeChanged();
-  }
   
   ngAfterViewInit(): void {
     this.width = this.root?.nativeElement.offsetWidth;
