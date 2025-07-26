@@ -2,7 +2,7 @@ import { ChangeDetectorRef, Component, ElementRef, ViewChild } from '@angular/co
 import * as d3 from 'd3';
 import * as _ from 'lodash';
 import { TopologyService } from './topology/service/topology.service';
-import { CHART_ANIMATION_DURATION, CHART_LAYER_DISTANCE_LOWER_BOUND, DEFS_FILTER_COLOR, DEFS_FILTER_DEVIATION, EDGE_BORDER_COLOR_DEFAULT, EDGE_BORDER_WIDTH_DEFAULT, LABEL_FONT_FAMILY_DEFAULT, LABEL_FONT_SIZE_DEFAULT, LABEL_FONT_SIZE_GROUP, LABEL_X_SHIFT, LABEL_Y_SHIFT, LOADING_DELAY, NODE_BORDER_WIDTH_DEFAULT, NODE_RADIUS, PATH_ROOT_MARGIN_BOTTOM, PATH_ROOT_MARGIN_LEFT, PATH_ROOT_MARGIN_RIGHT, PATH_ROOT_MARGIN_TOP, TABLE_BACKGROUND, TABLE_BORDER, TABLE_COL_HEIGHT, TABLE_COL_MARGIN_LEFT, TABLE_COL_Y_SHIFT, TABLE_TEXT_X, TABLE_TEXT_Y, TABLE_WIDTH, TABLE_X, TABLE_Y, TopoEdge, TopoLegend, TopoNode, Topology, TopologyControlType, TopologyGeometryType, TopologyMouseEventType, TopologyNodeType, groupColorMap } from './topology/service/topology.domain';
+import { CHART_ANIMATION_DURATION, CHART_LAYER_DISTANCE_LOWER_BOUND, DEFS_FILTER_COLOR, DEFS_FILTER_DEVIATION, EDGE_BORDER_COLOR_DEFAULT, EDGE_BORDER_WIDTH_DEFAULT, LABEL_FONT_FAMILY_DEFAULT, LABEL_FONT_SIZE_DEFAULT, LABEL_FONT_SIZE_GROUP, LABEL_X_SHIFT, LABEL_Y_SHIFT, LOADING_DELAY, NODE_BORDER_WIDTH_DEFAULT, NODE_RADIUS, PATH_ROOT_MARGIN_BOTTOM, PATH_ROOT_MARGIN_LEFT, PATH_ROOT_MARGIN_RIGHT, PATH_ROOT_MARGIN_TOP, TABLE_BACKGROUND, TABLE_BORDER, TABLE_COL_HEIGHT, TABLE_COL_MARGIN_LEFT, TABLE_COL_Y_SHIFT, TABLE_TEXT_X, TABLE_TEXT_Y, TABLE_WIDTH, TABLE_X, TABLE_Y, TopoEdge, TopoLegend, TopoNode, Topology, TopologyControlType, TopologyGeometryType, TopologyMouseEventType, TopologyNodeType, TopologyVirtualEdge, groupColorMap } from './topology/service/topology.domain';
 import { BehaviorSubject, Subject, delay, filter, switchMap, takeUntil, tap } from 'rxjs';
 import { LoadingService } from './topology/topology-path-loading/loading.service';
 
@@ -25,6 +25,8 @@ export class AppComponent {
   cnt = 0;
 
   node: TopoNode;
+  edges: TopoEdge[];
+
   rootNode: d3.HierarchyNode<TopoNode>;
 
   svg: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
@@ -34,8 +36,10 @@ export class AppComponent {
   fetchEventSubject = new BehaviorSubject<TopologyNodeType | null>(null);
   fetchEvent$ = this.fetchEventSubject.asObservable();
   
-  private renderGraphEventSubject = new BehaviorSubject<TopoNode | null>(null);
+  private renderGraphEventSubject = new BehaviorSubject<Topology | null>(null);
   private destroyedSubject = new Subject<void>();
+
+  nodePostionMap = new Map<string, {x: number, y: number}>;
   
   constructor(
     private topologyService: TopologyService,
@@ -53,7 +57,7 @@ export class AppComponent {
       // Clean items on svg
       this.cleanItemsOnSvg();
       
-      this.renderGraphEventSubject.next(data.nodes[0] as TopoNode);
+      this.renderGraphEventSubject.next(data);
     });
   }
 
@@ -110,6 +114,7 @@ export class AppComponent {
     nodeSelectionEnter
       .append("circle")
       .attr("id", (d: d3.HierarchyPointNode<TopoNode>) => `${D3_NODE_ID}_${d.id}`)
+      .attr("class", "node")
       .attr("r", (node: d3.HierarchyPointNode<TopoNode>) =>  {
         return NODE_RADIUS * 1.8;
       })
@@ -122,6 +127,11 @@ export class AppComponent {
       .attr("stroke-width", NODE_BORDER_WIDTH_DEFAULT)
       .attr("cursor", "pointer")
       .on(TopologyMouseEventType.CLICK_EVENT, (event, d: d3.HierarchyPointNode<TopoNode>) => this.nodeClicked(d, rootNode, svg));
+
+    svg.selectAll(`.node`)
+      .each((d: any) => {
+        this.nodePostionMap.set(d.data.id, {x: d.x, y: d.y});
+      });
 
     //label
     nodeSelectionEnter
@@ -184,23 +194,41 @@ export class AppComponent {
   private renderEdges(
     source: d3.HierarchyPointNode<TopoNode>,
     svg: d3.Selection<SVGGElement, unknown, HTMLElement, any>,
-    links: d3.HierarchyPointNode<TopoNode>[]
+    additionalEdges: TopoEdge[]
   ) {
+    const virtualEdges: TopologyVirtualEdge[] = [];
+
+    additionalEdges?.forEach((filteredEdge, index) => {
+      const edgeNodes = [filteredEdge.source, filteredEdge.target];
+      const sourceNode = this.nodePostionMap.get(edgeNodes[0].id);
+      const destinationNode = this.nodePostionMap.get(edgeNodes[1].id);
+
+      const virtualEdge = new TopologyVirtualEdge();
+      virtualEdge.id = `virtual-${index}`;
+      virtualEdge.sourceX = sourceNode?.x;
+      virtualEdge.destinationX = destinationNode?.x;
+      virtualEdge.sourceY = sourceNode?.y;
+      virtualEdge.destinationY = destinationNode?.y;
+
+      virtualEdges.push(virtualEdge);
+    })
+    
     let linkSelection = svg.selectAll("path.link")
-      .data(links, (d: any) => d.id);
+      .data(virtualEdges, (d: any) => d.id);
 
     //append new edges
+     //append new edges
     let linkSelectionEnter = linkSelection
       .enter()
       .insert("path", "g")
-      .attr("id", (d: d3.HierarchyPointNode<TopoNode>) => `${D3_EDGE_ID}_${d.id}`)
+      .attr("id", (d: TopologyVirtualEdge) => `${D3_EDGE_ID}_${d.id}`)
       .attr("class", "link")
       .attr("fill", "none")
       .attr("filter", "none")
-      .attr("stroke", (d: d3.HierarchyPointNode<TopoNode>) => EDGE_BORDER_COLOR_DEFAULT)
-      .attr("stroke-width", (d: d3.HierarchyPointNode<TopoNode>) => EDGE_BORDER_WIDTH_DEFAULT)
-      .on(TopologyMouseEventType.MOUSEENTER_EVENT, (event: any, d: d3.HierarchyPointNode<TopoNode>) => svg.selectAll(`#${D3_EDGE_ID}_${d.id}`).attr("filter", "url(#yellow-outline)"))
-      .on(TopologyMouseEventType.MOUSELEAVE_EVENT, (event: any, d: d3.HierarchyPointNode<TopoNode>) => svg.selectAll(`#${D3_EDGE_ID}_${d.id}`).attr("filter", "none"));
+      .attr("stroke", (d: TopologyVirtualEdge) => EDGE_BORDER_COLOR_DEFAULT)
+      .attr("stroke-width", (d: TopologyVirtualEdge) => EDGE_BORDER_WIDTH_DEFAULT)
+      .on(TopologyMouseEventType.MOUSEENTER_EVENT, (event: any, d:TopologyVirtualEdge) => svg.selectAll(`#${D3_EDGE_ID}_${d.id}`).attr("filter", "url(#yellow-outline)"))
+      .on(TopologyMouseEventType.MOUSELEAVE_EVENT, (event: any, d: TopologyVirtualEdge) => svg.selectAll(`#${D3_EDGE_ID}_${d.id}`).attr("filter", "none"));
     
     //merge the new items with the existing items
     let linkUpdate = linkSelectionEnter.merge(linkSelection as any);
@@ -209,7 +237,13 @@ export class AppComponent {
     linkUpdate
       .transition()
       .duration(CHART_ANIMATION_DURATION)
-      .attr("d", (d: d3.HierarchyPointNode<TopoNode>) => this.diagonal(d, d.parent!));
+      .attr("d", (d: TopologyVirtualEdge) => this.diagonal({
+        x: d.destinationX!,
+        y: d.destinationY!
+      }, {
+        x: d.sourceX!,
+        y: d.sourceY!
+      }));
 
     //translate exited edges (selected sub-tree) to the source edge and remove them
     linkSelection
@@ -220,13 +254,18 @@ export class AppComponent {
       .remove();
   }
 
-  private diagonal(s: d3.HierarchyPointNode<TopoNode>, d: d3.HierarchyPointNode<TopoNode>) {
-    let path = `M ${s.y} ${s.x}
+  private diagonal(s: any, d: any) {
+    if (Math.floor(s.y) === Math.floor(d.y)) {
+      return `M ${s.y} ${s.x}
+            C ${(s.y + d.y) / 3 * 2} ${s.x},
+              ${(s.y + d.y) / 3 * 2 } ${d.x},
+              ${d.y} ${d.x}`;
+    }
+
+    return `M ${s.y} ${s.x}
             C ${(s.y + d.y) / 2} ${s.x},
               ${(s.y + d.y) / 2} ${d.x},
               ${d.y} ${d.x}`;
-
-    return path;
   }
 
   private initZoom() {
@@ -251,9 +290,10 @@ export class AppComponent {
     this.renderGraphEventSubject.pipe(
       filter(data => !!data),
       takeUntil(this.destroyedSubject)
-    ).subscribe((data: TopoNode | null) => {
+    ).subscribe((data: Topology | null) => {
       console.log('handleGraphEvents')
-      this.node = data!;
+      this.node = data?.nodes[0]!;
+      this.edges = data?.edges!;
       this.rootNode = d3.hierarchy(this.node);
       
       this.initZoom();
@@ -314,8 +354,9 @@ export class AppComponent {
 
     this.renderNodes(rootNode, source, svg, nodeSelection, nodeSelectionEnter);
 
+    console.log(this.edges)
     //edges
-    this.renderEdges(source, svg, links);
+    this.renderEdges(source, svg, this.edges);
   }
 
   private treemap = () => d3.tree().size([this.height, this.width]);
