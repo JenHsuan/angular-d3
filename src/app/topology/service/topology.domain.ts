@@ -1,3 +1,126 @@
+export class PriorityQueueItem {
+  weight: number;
+  fromNode: string | null;
+  toNode: string | null;
+}
+
+export class PriorityQueueMinQueue {
+  private heap: PriorityQueueItem[] = [];
+  private nodeToIndex: Map<string, number>;
+
+  constructor() {
+    this.nodeToIndex = new Map();
+  }
+
+  get isEmpty(): boolean {
+    return this.heap.length === 0;
+  }
+
+  push(item: PriorityQueueItem) {
+    const key = `${item.fromNode}-${item.toNode}`;
+    if (this.nodeToIndex.has(key)) {
+      this.decreaseKey(item);
+    } else {
+      const index = this.heap.length;
+      this.heap.push(item);
+      this.nodeToIndex.set(key, index);
+      this.swim(this.heap.length - 1);
+    }
+  }
+
+  pop(): PriorityQueueItem | undefined {
+    if (this.heap.length === 0) {
+      return undefined;
+    }
+
+    //the first item is the min
+    const min = this.heap[0];
+
+    //pop the last item
+    const last = this.heap.pop();
+
+    if (last !== undefined) {
+      this.nodeToIndex.delete(`${min.fromNode}-${min.toNode}`);
+
+      if (this.heap.length > 0) {
+        this.heap[0] = last;
+
+        //sink from the first item
+        this.sink(0);
+      }
+    }
+
+    return min;
+  }
+
+  decreaseKey(item: PriorityQueueItem) {
+    const key = `${item.fromNode}-${item.toNode}`;
+    const index = this.nodeToIndex.get(key);
+    if (index === undefined) {
+      return;
+    }
+
+    if (this.heap[index].weight <= item.weight) {
+      return;
+    }
+
+    this.heap[index].weight = item.weight;
+    this.swim(index);
+  }
+
+  //swim from children to parent until arriving the top
+  private swim(k: number) {
+    while (k > 0) {
+      const parent = Math.floor((k - 1) / 2);
+      if (this.heap[k].weight >= this.heap[parent].weight) {
+        break;
+      }
+
+      this.swap(k, parent);
+
+      k = parent;
+    }
+  }
+
+  //sink the top node
+  private sink(k: number) {
+    const length = this.heap.length;
+    while (true) {
+      //left child
+      const left = 2 * k + 1;
+      //right child
+      const right = 2 * k + 2;
+
+      //if the child is smaller, swap with the parent
+      let smallest = k;
+
+      if (left < length && this.heap[left].weight < this.heap[smallest].weight) {
+        smallest = left;
+      }
+
+      if (right < length && this.heap[right].weight < this.heap[smallest].weight) {
+        smallest = right;
+      }
+
+      if (smallest === k) {
+        break;
+      }
+
+      this.swap(smallest, k);
+      k = smallest;
+    }
+  }
+
+  private swap(i: number, j: number) {
+    let tmp: PriorityQueueItem = this.heap[i];
+    this.heap[i] = this.heap[j];
+    this.heap[j] = tmp;
+
+    this.nodeToIndex.set(`${this.heap[i].fromNode}-${this.heap[i].toNode}`, i);
+    this.nodeToIndex.set(`${this.heap[j].fromNode}-${this.heap[j].toNode}`, j);
+  }
+}
+
 export class Topology {
   nodes: TopoNode[];
   edges: TopoEdge[];
@@ -9,6 +132,8 @@ export class TopoNode {
   group: number;
 
   descriptions?: string[];
+
+  isRoot?: boolean;
 
   //virtual field
   children?: TopoNode[];
@@ -34,7 +159,19 @@ export class TopoEdge {
   source: TopoNode;
   target: TopoNode;
   id?: string;
+
+  weight?: number;
+  isFilteredByMst?: boolean;
 }
+
+export class TopologyVirtualEdge {
+  id: string;
+  sourceX?: number;
+  sourceY?: number;
+  destinationX?: number;
+  destinationY?: number;
+}
+
 
 export enum TopologyGeometryType {
   NODE = 'NODE',
