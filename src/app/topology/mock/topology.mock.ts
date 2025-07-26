@@ -5,7 +5,8 @@ const TOPO_MOCK_NODE: TopoNode[] = [
   {
     label: "Node 1",
     id: '0',
-    group: 1
+    group: 1,
+    isRoot: true
   },
   //1
   {
@@ -205,6 +206,26 @@ export const TOPO_MOCK_EDGE: TopoEdge[] = [
   },{
     source: TOPO_MOCK_NODE[1],
     target: TOPO_MOCK_NODE[5],
+  },{
+    //test
+    source: TOPO_MOCK_NODE[6],
+    target: TOPO_MOCK_NODE[7],
+    weight: 100
+  },{
+    //test
+    source: TOPO_MOCK_NODE[14],
+    target: TOPO_MOCK_NODE[15],
+    weight: 100
+  },{
+    //test
+    source: TOPO_MOCK_NODE[18],
+    target: TOPO_MOCK_NODE[19],
+    weight: 100
+  },{
+    //test
+    source: TOPO_MOCK_NODE[7],
+    target: TOPO_MOCK_NODE[10],
+    weight: 100
   },{
     source: TOPO_MOCK_NODE[1],
     target: TOPO_MOCK_NODE[6],
