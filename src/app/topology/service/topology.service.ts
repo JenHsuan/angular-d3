@@ -79,7 +79,7 @@ export class TopologyService {
           combinedEdges.forEach(combinedEdge => {
             combinedEdge.isFilteredByMst = false;
 
-            includedEdges.unshift(combinedEdge);
+            includedEdges.push(combinedEdge);
           });
         }
       }

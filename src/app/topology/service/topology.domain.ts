@@ -170,6 +170,7 @@ export class TopologyVirtualEdge {
   sourceY?: number;
   destinationX?: number;
   destinationY?: number;
+  isFilteredByMst?: boolean;
 }
 
 

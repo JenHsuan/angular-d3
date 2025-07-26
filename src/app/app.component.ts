@@ -209,6 +209,7 @@ export class AppComponent {
       virtualEdge.destinationX = destinationNode?.x;
       virtualEdge.sourceY = sourceNode?.y;
       virtualEdge.destinationY = destinationNode?.y;
+      virtualEdge.isFilteredByMst = filteredEdge?.isFilteredByMst;
 
       virtualEdges.push(virtualEdge);
     })
@@ -225,7 +226,10 @@ export class AppComponent {
       .attr("class", "link")
       .attr("fill", "none")
       .attr("filter", "none")
-      .attr("stroke", (d: TopologyVirtualEdge) => EDGE_BORDER_COLOR_DEFAULT)
+      .attr("stroke", (d: TopologyVirtualEdge) => {
+        // return d.isFilteredByMst? 'red' : EDGE_BORDER_COLOR_DEFAULT;
+        return EDGE_BORDER_COLOR_DEFAULT;
+      })
       .attr("stroke-width", (d: TopologyVirtualEdge) => EDGE_BORDER_WIDTH_DEFAULT)
       .on(TopologyMouseEventType.MOUSEENTER_EVENT, (event: any, d:TopologyVirtualEdge) => svg.selectAll(`#${D3_EDGE_ID}_${d.id}`).attr("filter", "url(#yellow-outline)"))
       .on(TopologyMouseEventType.MOUSELEAVE_EVENT, (event: any, d: TopologyVirtualEdge) => svg.selectAll(`#${D3_EDGE_ID}_${d.id}`).attr("filter", "none"));
