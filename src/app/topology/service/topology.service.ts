@@ -63,26 +63,6 @@ export class TopologyService {
     while (!pq.isEmpty) {
       const currItem: PriorityQueueItem = pq.pop()!;
       const currToNodeId = currItem.toNode;
-      const currFromNodeId = currItem.fromNode;
-
-      /*
-       * Keep the minimal weight edge
-       */
-      if (!_.isNil(currFromNodeId) && !_.isNil(currToNodeId) && !mstSet.has(currToNodeId)) {
-        const combinedEdges = rawEdges.filter(edge => { 
-          return (edge.source.id === currFromNodeId && edge.target.id === currToNodeId) ||
-            (edge.target.id === currFromNodeId && edge.source.id === currToNodeId)
-        });
-
-        //keep port associated edges
-        if (combinedEdges.length >= 1) {
-          combinedEdges.forEach(combinedEdge => {
-            combinedEdge.isFilteredByMst = false;
-
-            includedEdges.push(combinedEdge);
-          });
-        }
-      }
 
       /*
        * Add the nodes associated to the minimal weight edge into the MST
@@ -109,6 +89,12 @@ export class TopologyService {
               fromNode: currToNodeId,
               toNode: nodes[j].id
             });
+
+            mstSet.add(nodes[j].id);
+            neighborEdge.isFilteredByMst = false;
+
+            //Keep the minimal weight edge
+            includedEdges.unshift(neighborEdge);
           }
         }
       }
