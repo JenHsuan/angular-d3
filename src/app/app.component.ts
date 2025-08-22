@@ -40,6 +40,15 @@ export class AppComponent {
   private destroyedSubject = new Subject<void>();
 
   nodePostionMap = new Map<string, {x: number, y: number}>;
+
+  isEditModeSubject = new BehaviorSubject<boolean>(false);
+  get inEditMode(): boolean {
+    if (_.isNil(this.isEditModeSubject)) {
+      return false;
+    }
+
+    return this.isEditModeSubject.getValue();
+  }
   
   constructor(
     private topologyService: TopologyService,
@@ -273,7 +282,12 @@ export class AppComponent {
   }
 
   private initZoom() {
-    let zoom = d3.zoom().on('zoom', this.handleRootZoomEvent.bind(this));
+    let zoom = d3.zoom()
+    .filter((event) => {
+      return !this.inEditMode || (event.type === TopologyMouseEventType.WHEEL_EVENT);
+    })
+    .on('zoom', this.handleRootZoomEvent.bind(this));
+    
     d3.select(`#${D3_ROOT_ELEMENT_ID}`)
       .call(zoom as any);
   }
