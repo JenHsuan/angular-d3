@@ -2,8 +2,8 @@ import { ChangeDetectorRef, Component, ElementRef, ViewChild } from '@angular/co
 import * as d3 from 'd3';
 import * as _ from 'lodash';
 import { TopologyService } from './topology/service/topology.service';
-import { CHART_ANIMATION_DURATION, CHART_LAYER_DISTANCE_LOWER_BOUND, DEFS_FILTER_COLOR, DEFS_FILTER_DEVIATION, EDGE_BORDER_COLOR_DEFAULT, EDGE_BORDER_WIDTH_DEFAULT, LABEL_FONT_FAMILY_DEFAULT, LABEL_FONT_SIZE_DEFAULT, LABEL_FONT_SIZE_GROUP, LABEL_X_SHIFT, LABEL_Y_SHIFT, LOADING_DELAY, NODE_BORDER_WIDTH_DEFAULT, NODE_RADIUS, PATH_ROOT_MARGIN_BOTTOM, PATH_ROOT_MARGIN_LEFT, PATH_ROOT_MARGIN_RIGHT, PATH_ROOT_MARGIN_TOP, TABLE_BACKGROUND, TABLE_BORDER, TABLE_COL_HEIGHT, TABLE_COL_MARGIN_LEFT, TABLE_COL_Y_SHIFT, TABLE_TEXT_X, TABLE_TEXT_Y, TABLE_WIDTH, TABLE_X, TABLE_Y, TopoEdge, TopoLegend, TopoNode, Topology, TopologyControlType, TopologyGeometryType, TopologyMouseEventType, TopologyNodeType, TopologyVirtualEdge, groupColorMap } from './topology/service/topology.domain';
-import { BehaviorSubject, Subject, delay, filter, switchMap, takeUntil, tap } from 'rxjs';
+import { CHART_ANIMATION_DURATION, CHART_LAYER_DISTANCE_LOWER_BOUND, DEFS_FILTER_COLOR, DEFS_FILTER_DEVIATION, DRAG_DEBOUNCE_TIME, EDGE_BORDER_COLOR_DEFAULT, EDGE_BORDER_WIDTH_DEFAULT, LABEL_FONT_FAMILY_DEFAULT, LABEL_FONT_SIZE_DEFAULT, LABEL_FONT_SIZE_GROUP, LABEL_X_SHIFT, LABEL_Y_SHIFT, LOADING_DELAY, NODE_BORDER_WIDTH_DEFAULT, NODE_RADIUS, PATH_ROOT_MARGIN_BOTTOM, PATH_ROOT_MARGIN_LEFT, PATH_ROOT_MARGIN_RIGHT, PATH_ROOT_MARGIN_TOP, TABLE_BACKGROUND, TABLE_BORDER, TABLE_COL_HEIGHT, TABLE_COL_MARGIN_LEFT, TABLE_COL_Y_SHIFT, TABLE_TEXT_X, TABLE_TEXT_Y, TABLE_WIDTH, TABLE_X, TABLE_Y, TopoEdge, TopoLegend, TopoNode, TopoNodeDragEvent, Topology, TopologyControlType, TopologyGeometryType, TopologyMouseEventType, TopologyNodeType, TopologyVirtualEdge, groupColorMap } from './topology/service/topology.domain';
+import { BehaviorSubject, Subject, debounceTime, delay, filter, switchMap, takeUntil, tap } from 'rxjs';
 import { LoadingService } from './topology/topology-path-loading/loading.service';
 
 const D3_ROOT_ELEMENT_ID = "root";
@@ -25,7 +25,8 @@ export class AppComponent {
   cnt = 0;
 
   node: TopoNode;
-  edges: TopoEdge[];
+  flattenedNodes: d3.HierarchyPointNode<TopoNode>[] = [];
+  edges: TopoEdge[] = [];
 
   rootNode: d3.HierarchyNode<TopoNode>;
 
@@ -49,7 +50,11 @@ export class AppComponent {
 
     return this.isEditModeSubject.getValue();
   }
-  
+
+  nodeDragSubject = new BehaviorSubject<TopoNodeDragEvent | null>(null);
+
+  drag = d3.drag();
+
   constructor(
     private topologyService: TopologyService,
     private loadingService: LoadingService,
@@ -68,6 +73,8 @@ export class AppComponent {
       
       this.renderGraphEventSubject.next(data);
     });
+
+    this.registerNodeDraggingEventHandler();
   }
 
   ngAfterViewInit(): void {
@@ -123,7 +130,7 @@ export class AppComponent {
     nodeSelectionEnter
       .append("circle")
       .attr("id", (d: d3.HierarchyPointNode<TopoNode>) => `${D3_NODE_ID}_${d.id}`)
-      .attr("class", "node")
+      .attr("class", "node-circle")
       .attr("r", (node: d3.HierarchyPointNode<TopoNode>) =>  {
         return NODE_RADIUS * 1.8;
       })
@@ -135,7 +142,7 @@ export class AppComponent {
       })
       .attr("stroke-width", NODE_BORDER_WIDTH_DEFAULT)
       .attr("cursor", "pointer")
-      .on(TopologyMouseEventType.CLICK_EVENT, (event, d: d3.HierarchyPointNode<TopoNode>) => this.nodeClicked(d, rootNode, svg));
+      //.on(TopologyMouseEventType.CLICK_EVENT, (event, d: d3.HierarchyPointNode<TopoNode>) => this.nodeClicked(d, rootNode, svg));
 
     svg.selectAll(`.node`)
       .each((d: any) => {
@@ -151,6 +158,15 @@ export class AppComponent {
       .attr("text-anchor", "middle")
       .text((node: d3.HierarchyPointNode<TopoNode>) => {
         return node.data.label;
+      })
+
+    //update the nodeCoordinateMap
+    svg.selectAll('.node')
+      .each((d: any) => {
+        this.nodePostionMap.set(d.data.id, {
+          x: d.x,
+          y: d.y
+        });
       })
 
      //append port table for nodes
@@ -182,6 +198,7 @@ export class AppComponent {
        });
      })
     
+    this.handleNodeGragging(nodeSelectionEnter);
     //merge the new items with the existing items
     let nodeUpdate = nodeSelectionEnter.merge(nodeSelection as any);
 
@@ -201,7 +218,7 @@ export class AppComponent {
   }
 
   private renderEdges(
-    source: d3.HierarchyPointNode<TopoNode>,
+   // source: d3.HierarchyPointNode<TopoNode>,
     svg: d3.Selection<SVGGElement, unknown, HTMLElement, any>,
     additionalEdges: TopoEdge[]
   ) {
@@ -227,7 +244,6 @@ export class AppComponent {
       .data(virtualEdges, (d: any) => d.id);
 
     //append new edges
-     //append new edges
     let linkSelectionEnter = linkSelection
       .enter()
       .insert("path", "g")
@@ -259,12 +275,12 @@ export class AppComponent {
       }));
 
     //translate exited edges (selected sub-tree) to the source edge and remove them
-    linkSelection
-      .exit()
-      .transition()
-      .duration(CHART_ANIMATION_DURATION)
-      .attr("d", (d: any) => this.diagonal(source, source))
-      .remove();
+    // linkSelection
+    //   .exit()
+    //   .transition()
+    //   .duration(CHART_ANIMATION_DURATION)
+    //   .attr("d", (d: any) => this.diagonal(source, source))
+    //   .remove();
   }
 
   private diagonal(s: any, d: any) {
@@ -287,7 +303,7 @@ export class AppComponent {
       return !this.inEditMode || (event.type === TopologyMouseEventType.WHEEL_EVENT);
     })
     .on('zoom', this.handleRootZoomEvent.bind(this));
-    
+
     d3.select(`#${D3_ROOT_ELEMENT_ID}`)
       .call(zoom as any);
   }
@@ -323,17 +339,18 @@ export class AppComponent {
   private updateChart(rootNode: d3.HierarchyNode<TopoNode>, source: d3.HierarchyPointNode<TopoNode>, svg: d3.Selection<SVGGElement, unknown, HTMLElement, any>) {
     let treeData = this.treemap()(rootNode as any) as d3.HierarchyPointNode<TopoNode>;
 
-    let nodes = treeData.descendants();
-    let links = treeData.descendants().slice(1);
+    this.flattenedNodes = treeData.descendants();
+
+    //let links = treeData.descendants().slice(1);
   
     //assign y property according to the depth
     let depth = 0;
-    nodes.forEach((d: d3.HierarchyPointNode<TopoNode>) => depth = Math.max(d.depth, depth));
+    this.flattenedNodes.forEach((d: d3.HierarchyPointNode<TopoNode>) => depth = Math.max(d.depth, depth));
     let layerWidth = Math.max(CHART_LAYER_DISTANCE_LOWER_BOUND, (this.width / (depth + 1)));
-    nodes.forEach((d: d3.HierarchyPointNode<TopoNode>) => d.y = d.depth * layerWidth);
+    this.flattenedNodes.forEach((d: d3.HierarchyPointNode<TopoNode>) => d.y = d.depth * layerWidth);
 
     //update the top and bottom according to the donut chart and the port table
-    nodes.forEach((d: d3.HierarchyPointNode<TopoNode>) => {
+    this.flattenedNodes.forEach((d: d3.HierarchyPointNode<TopoNode>) => {
       //donut chart
       d.data.top = d.x - NODE_RADIUS * 2;
       d.data.bottom = d.x + NODE_RADIUS * 2 + LABEL_Y_SHIFT + 50;
@@ -344,9 +361,9 @@ export class AppComponent {
     });
 
     //update the top and bottom according to the previous node
-    for (let i = 1; i < nodes.length; i++) {
-      let current = nodes[i - 1];
-      let next = nodes[i];
+    for (let i = 1; i < this.flattenedNodes.length; i++) {
+      let current = this.flattenedNodes[i - 1];
+      let next = this.flattenedNodes[i];
       let currentData = current.data;
       let nextData = next.data;
       if (current.depth === next.depth && nextData.top! <= currentData.bottom!) {
@@ -358,7 +375,7 @@ export class AppComponent {
     }
 
     //retrieve or append nodes
-    let nodeSelection = svg.selectAll("g.node").data(nodes, (d: any) => d.id || (d.id = ++this.cnt));
+    let nodeSelection = svg.selectAll("g.node").data(this.flattenedNodes, (d: any) => d.id || (d.id = ++this.cnt));
  
     //get ready to append items
     let nodeSelectionEnter = nodeSelection
@@ -372,9 +389,8 @@ export class AppComponent {
 
     this.renderNodes(rootNode, source, svg, nodeSelection, nodeSelectionEnter);
 
-    console.log(this.edges)
     //edges
-    this.renderEdges(source, svg, this.edges);
+    this.renderEdges(svg, this.edges);
   }
 
   private treemap = () => d3.tree().size([this.height, this.width]);
@@ -397,5 +413,93 @@ export class AppComponent {
 
     //update the chart
     this.updateChart(rootNode, d, svg);
+  }
+
+  registerNodeDraggingEventHandler() {
+    this.nodeDragSubject.pipe(
+      filter(data => this.inEditMode && !_.isNil(data)),
+      debounceTime(DRAG_DEBOUNCE_TIME),
+      takeUntil(this.destroyedSubject)
+    ).subscribe((data: TopoNodeDragEvent | null) => {
+      const { node: currNode, x: currentX, y: currentY } = data!;
+
+      console.log(currNode)
+
+      const targetNode = this.flattenedNodes.find(node => node.data.id === currNode.data.id);
+
+      if (targetNode) {
+        targetNode.x = currentY;
+        targetNode.y = currentX;
+      }
+
+      this.nodePostionMap.set(currNode.data.id, {
+        x: currentY,
+        y: currentX
+      });
+
+      if (this.edges.length > 0) {
+        d3.selectAll("path.link").remove();
+
+        //render edges group
+        this.renderEdges(this.svg, this.edges);
+      }
+
+      // this.topologyDataSubject.next({
+      //   nodes: convertHierarchyPointNodesToSimpleNodes(this.flattenedNodes),
+      //   edges: this.flattenedEdges
+      // });
+    });
+  }
+
+  private handleNodeGragging(
+    nodeSelectionEnter: d3.Selection<SVGGElement, d3.HierarchyPointNode<TopoNode>, SVGGElement, unknown>
+  ) {
+    const self = this;
+
+    let currentX = 0;
+    let currentY = 0;
+    let shouldStop = false;
+
+    nodeSelectionEnter.call(
+      (this.drag as any)
+        .on(TopologyMouseEventType.START, function(this: SVGGElement, event: any){
+          if (self.inEditMode) {
+            const target = event.sourceEvent.target;
+            shouldStop = false;
+
+            //drag
+            const transform = d3.select(this).attr("transform");
+            const match = /translate\(([^,]+),([^)]+)\)/.exec(transform);
+            if (match) {
+              currentX = parseFloat(match[1]);
+              currentY = parseFloat(match[2]);
+            } else {
+              currentX = 0;
+              currentY = 0;
+            }
+          }
+        })
+        .on(TopologyMouseEventType.DRAG, function(this: SVGGElement, event: any){
+          //drag event
+          currentX += event.dx;
+          currentY += event.dy;
+
+          d3.select(this)
+            .attr("transform", `translate(${currentX}, ${currentY})`);
+
+          const group = d3.select(this);
+          const currNode = (group.data()[0] as d3.HierarchyPointNode<TopoNode>);
+
+          self.nodeDragSubject.next(
+            {
+              node: _.cloneDeep(currNode),
+              x: currentX,
+              y: currentY
+            }
+          );
+        })
+        .on(TopologyMouseEventType.END, function(event: any){
+        })
+      )
   }
 }

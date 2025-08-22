@@ -24,7 +24,6 @@ export class TopologyService {
     //mst
     const additionalEdges = this.popEdgesNotInMinimumSpanningTree(newData);
 
-    console.log(additionalEdges)
     //build tree
     const newNodes = this.buildTree(newData);
     

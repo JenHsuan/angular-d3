@@ -1,3 +1,9 @@
+export interface TopoNodeDragEvent {
+  node: d3.HierarchyPointNode<TopoNode>;
+  x: number;
+  y: number;
+}
+
 export class PriorityQueueItem {
   weight: number;
   fromNode: string | null;
@@ -261,6 +267,8 @@ export enum TopologyMouseEventType {
   START = "start",
   END = "end"
 }
+
+export const DRAG_DEBOUNCE_TIME = 5;
 
 //port table
 export const TABLE_COL_Y_SHIFT = 80;
