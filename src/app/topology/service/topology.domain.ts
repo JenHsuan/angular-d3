@@ -249,12 +249,17 @@ export const CHART_LAYER_DISTANCE_LOWER_BOUND = 350;
 //events
 export enum TopologyMouseEventType {
   CLICK_EVENT = "click",
+  DBCLICK_EVENT = "dblclick",
   MOUSEOVER_EVENT = "mouseover",
   MOUSEENTER_EVENT = "mouseenter",
   MOUSEOUT_EVENT = "mouseout",
   MOUSELEAVE_EVENT = "mouseleave",
   DRAG_EVENT = "drag",
-  ZOOM_EVENT = "zoom"
+  ZOOM_EVENT = "zoom",
+  WHEEL_EVENT = "wheel",
+  DRAG = "drag",
+  START = "start",
+  END = "end"
 }
 
 //port table
