@@ -4,6 +4,10 @@ export interface TopoNodeDragEvent {
   y: number;
 }
 
+export interface TopoNodeRemoveEvent {
+  node: d3.HierarchyPointNode<TopoNode>;
+}
+
 export class PriorityQueueItem {
   weight: number;
   fromNode: string | null;
