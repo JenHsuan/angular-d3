@@ -42,18 +42,18 @@ export class AppComponent {
 
   nodePostionMap = new Map<string, {x: number, y: number}>;
 
-  isEditModeSubject = new BehaviorSubject<boolean>(true);
+  isEditModeSubject = new BehaviorSubject<boolean>(false);
   get inEditMode(): boolean {
     return this.isEditModeSubject.getValue();
   }
 
-  nodeDragSubject = new BehaviorSubject<TopoNodeDragEvent | null>(null);
+  private nodeDragSubject = new BehaviorSubject<TopoNodeDragEvent | null>(null);
 
   drag = d3.drag();
 
-  protected nodeRemoveSubject = new BehaviorSubject<TopoNodeRemoveEvent | null>(null);
+  private nodeRemoveSubject = new BehaviorSubject<TopoNodeRemoveEvent | null>(null);
 
-  topologyDataSubject = new BehaviorSubject<Topology | null>(null);
+  private topologyDataSubject = new BehaviorSubject<Topology | null>(null);
 
   constructor(
     private topologyService: TopologyService,
@@ -631,23 +631,25 @@ export class AppComponent {
           }
         })
         .on(TopologyMouseEventType.DRAG, function(this: SVGGElement, event: any){
-          //drag event
-          currentX += event.dx;
-          currentY += event.dy;
-
-          d3.select(this)
-            .attr("transform", `translate(${currentX}, ${currentY})`);
-
-          const group = d3.select(this);
-          const currNode = (group.data()[0] as d3.HierarchyPointNode<TopoNode>);
-
-          self.nodeDragSubject.next(
-            {
-              node: _.cloneDeep(currNode),
-              x: currentX,
-              y: currentY
-            }
-          );
+          if (self.inEditMode) {
+            //drag event
+            currentX += event.dx;
+            currentY += event.dy;
+  
+            d3.select(this)
+              .attr("transform", `translate(${currentX}, ${currentY})`);
+  
+            const group = d3.select(this);
+            const currNode = (group.data()[0] as d3.HierarchyPointNode<TopoNode>);
+  
+            self.nodeDragSubject.next(
+              {
+                node: _.cloneDeep(currNode),
+                x: currentX,
+                y: currentY
+              }
+            );
+          }
         })
         .on(TopologyMouseEventType.END, function(event: any){
         })
