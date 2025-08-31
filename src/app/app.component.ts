@@ -39,6 +39,16 @@ export class AppComponent implements AfterViewInit{
     return `Undo (${this.commandStack.length})`;
   }
 
+  get footerLeftPosition(): number {
+    return this.el.nativeElement.offsetWidth - 80;
+  }
+
+  get footerTopPosition(): number {
+    return this.el.nativeElement.offsetHeight - 150;
+  }
+
+  constructor(private el: ElementRef) {}
+
   ngOnInit(): void {
   }
 

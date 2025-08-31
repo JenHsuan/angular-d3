@@ -10,6 +10,7 @@ import { TopologyControlbarGroupComponent } from './topology/topology-controlbar
 import { TopologyComponent } from './topology/topology.component';
 import { TopologyControlbarAssistantComponent } from './topology/topology-controlbar/topology-controlbar-assistant/topology-controlbar-assistant.component';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { FooterComponent } from './footer/footer.component';
 
 @NgModule({
   declarations: [
@@ -17,7 +18,8 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
     LoadingIndicatorComponent,
     TopologyControlbarGroupComponent,
     TopologyComponent,
-    TopologyControlbarAssistantComponent
+    TopologyControlbarAssistantComponent,
+    FooterComponent
   ],
   imports: [
     BrowserModule,
