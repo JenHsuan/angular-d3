@@ -6,13 +6,15 @@ import { AppComponent } from './app.component';
 import { TopologyControlbarComponent } from './topology/topology-controlbar/topology-controlbar.component';
 import { LoadingIndicatorComponent } from './topology/topology-path-loading/topology-path-loading-indicator/topology-path-loading-indicator.component';
 import { TopologyDisplayControllerComponent } from './topology/topology-display-controller/topology-display-controller.component';
+import { FooterComponent } from './footer/footer.component';
 
 @NgModule({
   declarations: [
     AppComponent,
     TopologyControlbarComponent,
     LoadingIndicatorComponent,
-    TopologyDisplayControllerComponent
+    TopologyDisplayControllerComponent,
+    FooterComponent
   ],
   imports: [
     BrowserModule,

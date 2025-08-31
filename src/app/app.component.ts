@@ -54,11 +54,19 @@ export class AppComponent {
   private nodeRemoveSubject = new BehaviorSubject<TopoNodeRemoveEvent | null>(null);
 
   private topologyDataSubject = new BehaviorSubject<Topology | null>(null);
+get footerLeftPosition(): number {
+    return this.el.nativeElement.offsetWidth - 80;
+  }
+
+  get footerTopPosition(): number {
+    return this.el.nativeElement.offsetHeight - 150;
+  }
 
   constructor(
     private topologyService: TopologyService,
     private loadingService: LoadingService,
-    private detectChanges: ChangeDetectorRef
+    private detectChanges: ChangeDetectorRef,
+    private el: ElementRef
   ) {
     this.fetchEvent$.pipe(
       filter(type => !!type),
